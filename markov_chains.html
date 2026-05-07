@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Markov Chains — Interactive Explainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Spectral:ital,wght@0,400;0,500;1,400&family=DM+Sans:opsz,wght@9..40,400;9..40,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --font-sans: 'DM Sans', sans-serif;
+  --font-serif: 'Spectral', serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+
+  --bg-primary: #ffffff;
+  --bg-secondary: #f7f6f3;
+  --bg-tertiary: #eeede9;
+  --text-primary: #1a1a18;
+  --text-secondary: #5a5955;
+  --text-tertiary: #9a9893;
+  --border-light: rgba(0,0,0,0.10);
+  --border-mid: rgba(0,0,0,0.18);
+  --border-strong: rgba(0,0,0,0.28);
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --amber-50: #FAEEDA; --amber-100: #FAC775; --amber-200: #EF9F27;
+  --amber-400: #BA7517; --amber-600: #854F0B; --amber-800: #633806;
+  --blue-50: #E6F1FB; --blue-100: #B5D4F4; --blue-200: #85B7EB;
+  --blue-400: #378ADD; --blue-600: #185FA5; --blue-800: #0C447C;
+  --purple-50: #EEEDFE; --purple-100: #CECBF6; --purple-200: #AFA9EC;
+  --purple-400: #7F77DD; --purple-600: #534AB7; --purple-800: #3C3489;
+  --teal-50: #E1F5EE; --teal-400: #1D9E75; --teal-600: #0F6E56; --teal-800: #085041;
+  --coral-50: #FAECE7; --coral-400: #D85A30; --coral-600: #993C1D; --coral-800: #712B13;
+  --red-400: #E24B4A;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #1c1c1a;
+    --bg-secondary: #242422;
+    --bg-tertiary: #2e2e2b;
+    --text-primary: #f0efe9;
+    --text-secondary: #a8a79f;
+    --text-tertiary: #6a6966;
+    --border-light: rgba(255,255,255,0.08);
+    --border-mid: rgba(255,255,255,0.14);
+    --border-strong: rgba(255,255,255,0.22);
+
+    --amber-50: #412402; --amber-100: #633806; --amber-200: #854F0B;
+    --amber-400: #EF9F27; --amber-600: #FAC775; --amber-800: #FAEEDA;
+    --blue-50: #042C53; --blue-100: #0C447C; --blue-200: #185FA5;
+    --blue-400: #378ADD; --blue-600: #85B7EB; --blue-800: #B5D4F4;
+    --purple-50: #26215C; --purple-100: #3C3489; --purple-200: #534AB7;
+    --purple-400: #7F77DD; --purple-600: #AFA9EC; --purple-800: #CECBF6;
+    --teal-50: #04342C; --teal-400: #1D9E75; --teal-600: #5DCAA5; --teal-800: #9FE1CB;
+    --coral-50: #4A1B0C; --coral-400: #D85A30; --coral-600: #F0997B; --coral-800: #F5C4B3;
+  }
+}
+
+html { font-size: 16px; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  padding: 2rem 1rem 4rem;
+  line-height: 1.6;
+}
+
+.page-wrap {
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+header {
+  margin-bottom: 2.5rem;
+}
+header h1 {
+  font-family: var(--font-serif);
+  font-size: 2.4rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.2;
+  margin-bottom: 0.5rem;
+}
+header p {
+  font-size: 15px;
+  color: var(--text-secondary);
+  max-width: 520px;
+}
+
+.card {
+  background: var(--bg-primary);
+  border-radius: var(--radius-xl);
+  border: 0.5px solid var(--border-light);
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.nav {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: 4px;
+  margin-bottom: 1.5rem;
+  border: 0.5px solid var(--border-light);
+}
+.nav-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.nav-btn.active {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-weight: 500;
+  border: 0.5px solid var(--border-mid);
+}
+.nav-btn:hover:not(.active) { color: var(--text-primary); }
+
+.section { display: none; }
+.section.active { display: block; }
+
+.panel-title {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+
+/* ── Controls ── */
+.controls-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+.ctrl-btn {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  background: var(--bg-primary);
+  border: 0.5px solid var(--border-mid);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: background 0.12s, transform 0.08s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ctrl-btn:hover { background: var(--bg-secondary); }
+.ctrl-btn:active { transform: scale(0.97); }
+.ctrl-btn.primary {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  border-color: var(--text-primary);
+}
+.ctrl-btn.primary:hover { opacity: 0.85; }
+
+select {
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  border: 0.5px solid var(--border-mid);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+/* ── Intuition tab ── */
+.chain-canvas-wrap {
+  position: relative;
+  width: 100%;
+  height: 300px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  border: 0.5px solid var(--border-light);
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+}
+#chainCanvas { width: 100%; height: 100%; display: block; }
+
+.trail-label { font-size: 12px; color: var(--text-tertiary); }
+.state-trail {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+  min-height: 36px;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 0.5px solid var(--border-light);
+}
+.trail-state {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 500;
+}
+.trail-arrow { font-size: 11px; color: var(--text-tertiary); }
+
+/* ── Matrix tab ── */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 540px) { .two-col { grid-template-columns: 1fr; } }
+
+.sub-card {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  border: 0.5px solid var(--border-light);
+  padding: 1.25rem;
+}
+.sub-card h3 { font-size: 13px; font-weight: 500; color: var(--text-secondary); margin-bottom: 1rem; }
+
+.matrix-table { border-collapse: collapse; width: 100%; }
+.matrix-table th { font-size: 11px; color: var(--text-tertiary); padding: 4px 6px; text-align: center; }
+.matrix-table td { padding: 3px; text-align: center; }
+.matrix-table input {
+  width: 54px;
+  padding: 5px 4px;
+  text-align: center;
+  font-size: 13px;
+  font-family: var(--font-mono);
+  border: 0.5px solid var(--border-mid);
+  border-radius: 5px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+.matrix-table input:focus { outline: none; border-color: var(--border-strong); }
+.row-sum { font-size: 12px; font-family: var(--font-mono); color: var(--text-secondary); padding-left: 6px; }
+.row-sum.bad { color: var(--red-400); }
+
+.dist-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.dist-label { font-size: 12px; font-weight: 500; min-width: 22px; }
+.dist-bar-wrap {
+  flex: 1;
+  height: 18px;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 0.5px solid var(--border-light);
+}
+.dist-bar { height: 100%; border-radius: 4px; transition: width 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+.dist-val { font-size: 12px; font-family: var(--font-mono); color: var(--text-secondary); min-width: 42px; text-align: right; }
+.step-controls { display: flex; gap: 6px; align-items: center; margin-top: 1rem; flex-wrap: wrap; }
+
+/* ── Convergence tab ── */
+.conv-chart-wrap { position: relative; width: 100%; height: 270px; margin-bottom: 1.5rem; }
+#convCanvas { width: 100%; height: 100%; }
+
+.eig-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 1.5rem; }
+.eig-card {
+  background: var(--bg-secondary);
+  border: 0.5px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 12px 10px;
+  text-align: center;
+}
+.eig-label { font-size: 11px; color: var(--text-tertiary); margin-bottom: 4px; }
+.eig-val { font-size: 20px; font-weight: 500; font-family: var(--font-mono); color: var(--text-primary); }
+.eig-sub { font-size: 11px; color: var(--text-secondary); margin-top: 3px; }
+
+/* ── Theorems tab ── */
+.theorem-list { display: flex; flex-direction: column; gap: 10px; }
+.theorem {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  border: 0.5px solid var(--border-light);
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.theorem:hover { border-color: var(--border-mid); }
+.theorem-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.theorem-name { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+.header-right { display: flex; align-items: center; gap: 8px; }
+.theorem-tag {
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 4px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.tag-pf { background: var(--purple-50); color: var(--purple-800); }
+.tag-mc { background: var(--teal-50); color: var(--teal-800); }
+.tag-la { background: var(--blue-50); color: var(--blue-800); }
+.chevron { font-size: 16px; color: var(--text-tertiary); transition: transform 0.2s; }
+.chevron.open { transform: rotate(180deg); }
+.theorem-body {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.75;
+  margin-top: 0.875rem;
+  display: none;
+}
+.theorem-body.open { display: block; }
+.stmt {
+  background: var(--bg-primary);
+  border-left: 2px solid var(--border-strong);
+  padding: 10px 14px;
+  border-radius: 0 5px 5px 0;
+  margin: 0.5rem 0 0.875rem;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--text-primary);
+}
+.proof-text { margin-bottom: 0.75rem; }
+
+/* ── Math display ── */
+.math { font-family: var(--font-mono); font-size: 13px; }
+
+/* ── Footnote / info strips ── */
+.info-strip {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+</style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+  <header>
+    <h1>Markov Chains</h1>
+    <p>An interactive exploration of random processes, transition matrices, and convergence.</p>
+  </header>
+
+  <div class="card">
+    <div class="nav">
+      <button class="nav-btn active" onclick="switchTab('intuition',this)">Intuition</button>
+      <button class="nav-btn" onclick="switchTab('matrix',this)">Transition matrix</button>
+      <button class="nav-btn" onclick="switchTab('convergence',this)">Convergence</button>
+      <button class="nav-btn" onclick="switchTab('theorems',this)">Theorems</button>
+    </div>
+
+    <!-- ══════════════ TAB 1: INTUITION ══════════════ -->
+    <div id="tab-intuition" class="section active">
+      <p class="panel-title">The Markov property — the future depends only on the present</p>
+
+      <div class="chain-canvas-wrap">
+        <canvas id="chainCanvas"></canvas>
+      </div>
+
+      <div class="controls-row">
+        <button class="ctrl-btn primary" onclick="stepChain()">
+          <i class="ti ti-player-play" aria-hidden="true"></i> Step once
+        </button>
+        <button class="ctrl-btn" onclick="autoRun()" id="autoBtn">Auto-run</button>
+        <button class="ctrl-btn" onclick="resetChain()">
+          <i class="ti ti-refresh" aria-hidden="true"></i> Reset
+        </button>
+        <select id="exampleSelect" onchange="loadExample()">
+          <option value="weather">Weather model</option>
+          <option value="pagerank">PageRank (3 pages)</option>
+          <option value="random">Random walk</option>
+        </select>
+      </div>
+
+      <p class="panel-title">Path so far</p>
+      <div class="state-trail" id="statTrail">
+        <span class="trail-label">Press "Step once" to begin</span>
+      </div>
+
+      <p class="info-strip">
+        <i class="ti ti-info-circle" aria-hidden="true"></i>
+        The highlighted node is the current state. Arrow thickness encodes transition probability.
+      </p>
+    </div>
+
+    <!-- ══════════════ TAB 2: MATRIX ══════════════ -->
+    <div id="tab-matrix" class="section">
+      <p class="panel-title">Edit the transition matrix — rows must sum to 1</p>
+
+      <div class="two-col">
+        <div class="sub-card">
+          <h3>Transition matrix <span class="math">P</span></h3>
+          <table class="matrix-table">
+            <thead>
+              <tr><th></th><th>→ S</th><th>→ R</th><th>→ F</th><th>Σ</th></tr>
+            </thead>
+            <tbody id="matrixBody"></tbody>
+          </table>
+        </div>
+        <div class="sub-card">
+          <h3>Distribution after <span id="stepCount">0</span> steps</h3>
+          <div id="distBars"></div>
+          <div class="step-controls">
+            <button class="ctrl-btn" onclick="matStep(-10)" style="font-family:var(--font-mono)">−10</button>
+            <button class="ctrl-btn" onclick="matStep(-1)" style="font-family:var(--font-mono)">−1</button>
+            <button class="ctrl-btn primary" onclick="matStep(1)">+1 step</button>
+            <button class="ctrl-btn" onclick="matStep(10)">+10</button>
+            <button class="ctrl-btn" onclick="matStep(100)">+100</button>
+          </div>
+        </div>
+      </div>
+
+      <p class="info-strip">
+        <i class="ti ti-info-circle" aria-hidden="true"></i>
+        Each entry Pᵢⱼ is the probability of moving from state i to state j. Rows must be probability distributions.
+      </p>
+    </div>
+
+    <!-- ══════════════ TAB 3: CONVERGENCE ══════════════ -->
+    <div id="tab-convergence" class="section">
+      <p class="panel-title">Distribution over time — convergence to stationary distribution π</p>
+
+      <div class="conv-chart-wrap">
+        <canvas id="convCanvas" role="img" aria-label="Line chart showing probability distributions converging to stationary distribution π over time steps"></canvas>
+      </div>
+
+      <div class="eig-grid" id="eigDisplay"></div>
+
+      <div class="controls-row">
+        <button class="ctrl-btn primary" onclick="runConv()">
+          <i class="ti ti-refresh" aria-hidden="true"></i> Recompute
+        </button>
+      </div>
+
+      <p class="info-strip">
+        <i class="ti ti-info-circle" aria-hidden="true"></i>
+        Solid, dashed, and dotted lines show distributions starting from each of the three states. They converge to the same π (dotted horizontal lines), regardless of starting state.
+      </p>
+    </div>
+
+    <!-- ══════════════ TAB 4: THEOREMS ══════════════ -->
+    <div id="tab-theorems" class="section">
+      <p class="panel-title">Key theorems — click to expand</p>
+      <div class="theorem-list" id="theoremList"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+const STATE_FULL_COLORS = [
+  { bg:'var(--amber-50)', border:'var(--amber-400)', text:'var(--amber-800)', bar:'var(--amber-200)',
+    bgHex:()=>getComputedStyle(document.documentElement).getPropertyValue('--amber-50').trim(),
+    borderHex:()=>getComputedStyle(document.documentElement).getPropertyValue('--amber-400').trim(),
+    textHex:()=>getComputedStyle(document.documentElement).getPropertyValue('--amber-800').trim() },
+  { bg:'var(--blue-50)',   border:'var(--blue-400)',   text:'var(--blue-800)',   bar:'var(--blue-200)',
+    bgHex:()=>getComputedStyle(document.documentElement).getPropertyValue('--blue-50').trim(),
+    borderHex:()=>getComputedStyle(document.documentElement).getPropertyValue('--blue-400').trim(),
+    textHex:()=>getComputedStyle(document.documentElement).getPropertyValue('--blue-800').trim() },
+  { bg:'var(--purple-50)', border:'var(--purple-400)', text:'var(--purple-800)', bar:'var(--purple-200)',
+    bgHex:()=>getComputedStyle(document.documentElement).getPropertyValue('--purple-50').trim(),
+    borderHex:()=>getComputedStyle(document.documentElement).getPropertyValue('--purple-400').trim(),
+    textHex:()=>getComputedStyle(document.documentElement).getPropertyValue('--purple-800').trim() },
+];
+
+const EXAMPLES = {
+  weather: { P:[[0.7,0.2,0.1],[0.3,0.5,0.2],[0.2,0.3,0.5]], labels:['Sunny','Rainy','Foggy'] },
+  pagerank:{ P:[[0.1,0.6,0.3],[0.4,0.1,0.5],[0.7,0.2,0.1]], labels:['Page A','Page B','Page C'] },
+  random:  { P:[[0.5,0.5,0],[0.25,0.5,0.25],[0,0.5,0.5]],   labels:['Left','Center','Right'] },
+};
+
+let currentEx = 'weather';
+let P = EXAMPLES.weather.P.map(r=>[...r]);
+let currentState = 0, trail = [], matSteps = 0;
+let autoInterval = null, autoRunning = false;
+let convChart = null;
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='convergence') setTimeout(runConv, 60);
+  if(name==='matrix') { renderMatrix(); renderDist(); }
+  if(name==='theorems') renderTheorems();
+}
+
+// ─── CANVAS ───
+const canvas = document.getElementById('chainCanvas');
+const ctx = canvas.getContext('2d');
+let dpr = window.devicePixelRatio || 1;
+
+function resizeCanvas() {
+  dpr = window.devicePixelRatio || 1;
+  const wrap = canvas.parentElement;
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W+'px'; canvas.style.height = H+'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawChain();
+}
+
+function getNodePos(i, n) {
+  const wrap = canvas.parentElement;
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  const r = Math.min(W, H) * 0.31;
+  const angle = (2*Math.PI*i/n) - Math.PI/2;
+  return { x: W/2 + r*Math.cos(angle), y: H/2 + r*Math.sin(angle) };
+}
+
+function getHex(v) {
+  const el = document.createElement('div');
+  el.style.color = v; el.style.display = 'none';
+  document.body.appendChild(el);
+  const c = getComputedStyle(el).color; el.remove();
+  const m = c.match(/\d+/g);
+  if(!m) return '#888';
+  return '#'+[m[0],m[1],m[2]].map(x=>parseInt(x).toString(16).padStart(2,'0')).join('');
+}
+
+function drawArrow(fx, fy, tx, ty, prob, borderColor, isActive) {
+  const nodeR = 34;
+  const dx = tx-fx, dy = ty-fy, len = Math.sqrt(dx*dx+dy*dy);
+  const ux = dx/len, uy = dy/len;
+  const sx = fx+ux*nodeR, sy = fy+uy*nodeR;
+  const ex = tx-ux*nodeR, ey = ty-uy*nodeR;
+
+  const mx = (fx+tx)/2, my = (fy+ty)/2;
+  const perp = { x:-uy, y:ux };
+  const cx = mx+perp.x*38, cy = my+perp.y*38;
+
+  const color = isActive ? getHex('var(--red-400)') : borderColor;
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = isActive ? 2.5 : Math.max(0.7, prob*4.5);
+  ctx.globalAlpha = isActive ? 1 : 0.25 + prob*0.75;
+
+  ctx.beginPath(); ctx.moveTo(sx,sy);
+  ctx.quadraticCurveTo(cx,cy,ex,ey);
+  ctx.stroke();
+
+  const ang = Math.atan2(ey-cy, ex-cx);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = color;
+  ctx.save(); ctx.translate(ex,ey); ctx.rotate(ang);
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-10,-4); ctx.lineTo(-10,4);
+  ctx.closePath(); ctx.fill(); ctx.restore();
+
+  const lx = (sx+cx*2)/3 + perp.x*10;
+  const ly = (sy+cy*2)/3 + perp.y*10;
+  ctx.fillStyle = color;
+  ctx.globalAlpha = isActive ? 1 : 0.6+prob*0.4;
+  ctx.font = `11px ${getComputedStyle(document.body).fontFamily}`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(prob.toFixed(2), lx, ly);
+  ctx.restore();
+}
+
+function drawSelfLoop(cx, cy, prob, borderColor, isActive) {
+  const color = isActive ? getHex('var(--red-400)') : borderColor;
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = isActive ? 2.5 : Math.max(0.7, prob*4.5);
+  ctx.globalAlpha = isActive ? 1 : 0.25+prob*0.75;
+  ctx.beginPath();
+  ctx.arc(cx, cy-46, 18, 0.3, 2*Math.PI-0.3);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = color;
+  ctx.font = `11px ${getComputedStyle(document.body).fontFamily}`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(prob.toFixed(2), cx, cy-70);
+  ctx.restore();
+}
+
+function drawChain() {
+  const wrap = canvas.parentElement;
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  ctx.clearRect(0,0,W,H);
+
+  const ex = EXAMPLES[currentEx];
+  const n = ex.labels.length;
+  const positions = ex.labels.map((_,i)=>getNodePos(i,n));
+
+  for(let i=0;i<n;i++) {
+    for(let j=0;j<n;j++) {
+      if(P[i][j] < 0.005) continue;
+      const isActive = trail.length>1 && trail[trail.length-2]===i && trail[trail.length-1]===j;
+      const bh = getHex(STATE_FULL_COLORS[i].border);
+      if(i===j) drawSelfLoop(positions[i].x, positions[i].y, P[i][j], bh, isActive);
+      else drawArrow(positions[i].x, positions[i].y, positions[j].x, positions[j].y, P[i][j], bh, isActive);
+    }
+  }
+
+  for(let i=0;i<n;i++) {
+    const {x,y} = positions[i];
+    const isActive = currentState===i;
+    const c = STATE_FULL_COLORS[i];
+    ctx.save();
+    ctx.beginPath(); ctx.arc(x,y,34,0,2*Math.PI);
+    ctx.fillStyle = isActive ? getHex(c.border) : getHex(c.bg);
+    ctx.fill();
+    ctx.strokeStyle = getHex(c.border);
+    ctx.lineWidth = isActive ? 3 : 1.5;
+    ctx.stroke();
+    ctx.fillStyle = isActive ? '#ffffff' : getHex(c.text);
+    ctx.font = `${isActive?'500 ':''}13px ${getComputedStyle(document.body).fontFamily}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(ex.labels[i], x, y);
+    ctx.restore();
+  }
+}
+
+function stepChain() {
+  const row = P[currentState];
+  const r = Math.random();
+  let cum = 0;
+  for(let j=0;j<row.length;j++) {
+    cum += row[j];
+    if(r<=cum) { currentState=j; break; }
+  }
+  trail.push(currentState);
+  if(trail.length>22) trail=trail.slice(-22);
+  drawChain(); renderTrail();
+}
+
+function renderTrail() {
+  const el = document.getElementById('statTrail');
+  if(!trail.length) { el.innerHTML='<span class="trail-label">Press "Step once" to begin</span>'; return; }
+  const ex = EXAMPLES[currentEx];
+  el.innerHTML = trail.map((s,i) => {
+    const c = STATE_FULL_COLORS[s];
+    return `<span class="trail-state" style="background:${c.bg};color:${c.text};border:1px solid ${c.border}">${ex.labels[s][0]}</span>${i<trail.length-1?'<span class="trail-arrow">→</span>':''}`;
+  }).join('');
+}
+
+function loadExample() {
+  currentEx = document.getElementById('exampleSelect').value;
+  P = EXAMPLES[currentEx].P.map(r=>[...r]);
+  currentState=0; trail=[]; stopAuto();
+  drawChain(); renderTrail();
+}
+function resetChain() { currentState=0; trail=[]; stopAuto(); drawChain(); renderTrail(); }
+function autoRun() {
+  if(autoRunning) stopAuto();
+  else {
+    autoRunning=true;
+    document.getElementById('autoBtn').textContent='Stop';
+    autoInterval=setInterval(stepChain,350);
+  }
+}
+function stopAuto() {
+  autoRunning=false;
+  if(autoInterval) clearInterval(autoInterval);
+  document.getElementById('autoBtn').textContent='Auto-run';
+}
+
+// ─── MATRIX TAB ───
+function renderMatrix() {
+  const labels = EXAMPLES[currentEx].labels.map(l=>l[0]);
+  document.getElementById('matrixBody').innerHTML = labels.map((lbl,i) => {
+    const sum = P[i].reduce((a,b)=>a+b,0);
+    const ok = Math.abs(sum-1)<0.012;
+    return `<tr>
+      <th style="font-size:12px;color:var(--text-secondary);padding-right:6px;font-weight:500">${lbl}</th>
+      ${P[i].map((v,j)=>`<td><input type="number" min="0" max="1" step="0.05" value="${v.toFixed(2)}" onchange="updateP(${i},${j},this.value)"></td>`).join('')}
+      <td><span class="row-sum ${ok?'':'bad'}">${sum.toFixed(2)}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function updateP(i,j,val) {
+  P[i][j] = parseFloat(val)||0;
+  renderMatrix(); renderDist(); if(convChart) runConv();
+}
+
+function matStep(n) {
+  matSteps = Math.max(0, matSteps+n);
+  renderDist();
+}
+
+function renderDist() {
+  let dist = [1,0,0];
+  for(let s=0;s<matSteps;s++) {
+    const next=[0,0,0];
+    for(let i=0;i<3;i++) for(let j=0;j<3;j++) next[j]+=dist[i]*P[i][j];
+    dist=next;
+  }
+  document.getElementById('stepCount').textContent=matSteps;
+  const labels = EXAMPLES[currentEx].labels;
+  document.getElementById('distBars').innerHTML = dist.map((v,i) => {
+    const c = STATE_FULL_COLORS[i];
+    return `<div class="dist-row">
+      <span class="dist-label" style="color:${c.text}">${(labels[i]||'?')[0]}</span>
+      <div class="dist-bar-wrap">
+        <div class="dist-bar" style="width:${(v*100).toFixed(1)}%;background:${c.bar}"></div>
+      </div>
+      <span class="dist-val">${(v*100).toFixed(1)}%</span>
+    </div>`;
+  }).join('');
+}
+
+// ─── CONVERGENCE TAB ───
+function powerMethod(mat, iters=300) {
+  let v=[1/3,1/3,1/3];
+  for(let k=0;k<iters;k++) {
+    const nv=[0,0,0];
+    for(let i=0;i<3;i++) for(let j=0;j<3;j++) nv[j]+=v[i]*mat[i][j];
+    v=nv;
+  }
+  return v;
+}
+
+function runConv() {
+  const steps=35;
+  const histories = [[1,0,0],[0,1,0],[0,0,1]].map(init=>{
+    let dist=[...init];
+    const h=[dist.map(v=>v)];
+    for(let s=0;s<steps;s++){
+      const next=[0,0,0];
+      for(let i=0;i<3;i++) for(let j=0;j<3;j++) next[j]+=dist[i]*P[i][j];
+      dist=next; h.push(dist.map(v=>v));
+    }
+    return h;
+  });
+
+  const stationary = powerMethod(P);
+  const labels = Array.from({length:steps+1},(_,i)=>i);
+  const barColors = [
+    getHex('var(--amber-200)'),
+    getHex('var(--blue-400)'),
+    getHex('var(--purple-400)'),
+  ];
+  const stateL = EXAMPLES[currentEx].labels;
+
+  const datasets = [0,1,2].flatMap(si =>
+    [0,1,2].map(startI => ({
+      label: `P(${stateL[si][0]}) | start=${stateL[startI][0]}`,
+      data: histories[startI].map(d=>parseFloat(d[si].toFixed(4))),
+      borderColor: barColors[si],
+      backgroundColor:'transparent',
+      borderWidth: startI===0?2:1.2,
+      borderDash: startI===0?[]:[startI===1?5:10,4],
+      pointRadius:0, tension:0.3,
+    }))
+  );
+
+  [0,1,2].forEach(si=>{
+    datasets.push({
+      label:`π*(${stateL[si][0]})`,
+      data: Array(steps+1).fill(parseFloat(stationary[si].toFixed(4))),
+      borderColor: barColors[si], borderWidth:1,
+      borderDash:[2,3], pointRadius:0, backgroundColor:'transparent',
+    });
+  });
+
+  const textCol = getHex('var(--text-secondary)');
+  const gridCol = getHex('var(--border-light)');
+  const cc = document.getElementById('convCanvas');
+  if(convChart) convChart.destroy();
+  convChart = new Chart(cc, {
+    type:'line',
+    data:{ labels, datasets },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      animation:{ duration:400 },
+      plugins:{
+        legend:{ display:false },
+        tooltip:{ callbacks:{ label: i=>`${i.dataset.label}: ${i.parsed.y.toFixed(3)}` } }
+      },
+      scales:{
+        x:{ grid:{ color:gridCol }, ticks:{ color:textCol, maxTicksLimit:10, font:{size:11} },
+            title:{ display:true, text:'step n', color:textCol, font:{size:11} } },
+        y:{ min:0, max:1, grid:{ color:gridCol }, ticks:{ color:textCol, font:{size:11} },
+            title:{ display:true, text:'probability', color:textCol, font:{size:11} } },
+      }
+    }
+  });
+
+  const trace = P[0][0]+P[1][1]+P[2][2];
+  const lambda2 = Math.abs((trace-1)/2);
+  const mixSteps = lambda2 > 0.005 ? Math.ceil(Math.log(0.01)/Math.log(lambda2)) : '—';
+  document.getElementById('eigDisplay').innerHTML = `
+    <div class="eig-card">
+      <div class="eig-label">λ₁ (Perron root)</div>
+      <div class="eig-val">1.000</div>
+      <div class="eig-sub">always 1 for stochastic P</div>
+    </div>
+    <div class="eig-card">
+      <div class="eig-label">|λ₂| estimate</div>
+      <div class="eig-val">${lambda2.toFixed(3)}</div>
+      <div class="eig-sub">controls mixing speed</div>
+    </div>
+    <div class="eig-card">
+      <div class="eig-label">≈ steps to mix (ε=0.01)</div>
+      <div class="eig-val">${mixSteps}</div>
+      <div class="eig-sub">from spectral gap bound</div>
+    </div>
+  `;
+}
+
+// ─── THEOREMS TAB ───
+const theorems = [
+  {
+    name: 'Perron-Frobenius theorem', tag:'tag-pf', tagText:'Perron–Frobenius',
+    stmt: 'If A > 0 (all entries strictly positive), then ∃ unique eigenvalue r > 0 with r > |λ| for all other λ. The corresponding eigenvectors have all strictly positive entries, and r is the unique eigenvalue with a positive eigenvector.',
+    proof: `The proof proceeds in three steps. First, Brouwer's fixed-point theorem guarantees a fixed point of T(x) = Ax/‖Ax‖₁ on the simplex — this is the Perron eigenvector v > 0. Second, the left eigenvector u (found symmetrically) satisfies uᵀA = ruᵀ; multiplying |λ|·uᵀ|w| ≤ uᵀA|w| = r·uᵀ|w| shows |λ| ≤ r for any eigenvalue λ. Third, if |λ| = r, equality forces all components of the eigenvector to share the same complex argument, making it real and equal to r. Simplicity follows because two independent positive eigenvectors produce a linear combination with a zero entry — contradicting strict positivity.`
+  },
+  {
+    name: 'Fundamental convergence theorem', tag:'tag-mc', tagText:'Markov chains',
+    stmt: 'If a chain is irreducible and aperiodic, then Pⁿᵢⱼ → πⱼ as n → ∞ for all i, j, where π is the unique stationary distribution.',
+    proof: `Irreducibility and aperiodicity together guarantee that Pᵏ is strictly positive for some large k, placing us in the Perron-Frobenius regime. The spectral decomposition Pⁿ = π1ᵀ + Σₖ λₖⁿ vₖuₖᵀ shows all terms with |λₖ| < 1 decay exponentially to zero, leaving only the rank-1 matrix 1πᵀ. Every row of Pⁿ converges to π regardless of starting state. The rate is governed by |λ₂|ⁿ, where λ₂ is the second-largest eigenvalue.`
+  },
+  {
+    name: 'Ergodic theorem', tag:'tag-mc', tagText:'Markov chains',
+    stmt: 'For an irreducible, positive recurrent chain: (1/n)Σₖ₌₀ⁿ⁻¹ 𝟙[Xₖ=j] → πⱼ almost surely as n → ∞.',
+    proof: `This is the Markov chain analogue of the Strong Law of Large Numbers. Positive recurrence means the expected return time to state j is finite, equal to 1/πⱼ. By renewal theory, the long-run fraction of time in state j converges almost surely to πⱼ. This result justifies Markov Chain Monte Carlo (MCMC): running a chain long enough produces a time-average that approximates expectations under π, even when direct sampling from π is intractable.`
+  },
+  {
+    name: 'Detailed balance (reversibility)', tag:'tag-mc', tagText:'Markov chains',
+    stmt: 'If πᵢ Pᵢⱼ = πⱼ Pⱼᵢ for all i, j (detailed balance), then π is a stationary distribution of P.',
+    proof: `Proof: sum detailed balance over i: Σᵢ πᵢ Pᵢⱼ = πⱼ Σᵢ Pⱼᵢ = πⱼ (since rows sum to 1). So πP = π. Detailed balance says the probability flux from i→j equals the flux from j→i — the chain is time-reversible. The Metropolis-Hastings algorithm deliberately constructs acceptance probabilities to satisfy this condition for a desired target distribution π, making it a canonical tool in Bayesian computation.`
+  },
+  {
+    name: 'Spectral gap and mixing time', tag:'tag-la', tagText:'Linear algebra',
+    stmt: 'τ(ε) ≤ log(1/ε) / log(1/|λ₂|), where λ₂ is the second eigenvalue of P and τ(ε) is the number of steps to reach within ε of π in total variation.',
+    proof: `From the spectral decomposition, ‖Pⁿ(x,·) − π‖_TV ≤ C·|λ₂|ⁿ. Setting C·|λ₂|ⁿ ≤ ε and solving for n gives the bound. The spectral gap γ = 1 − |λ₂| quantifies the rate of exponential decay. A large gap (λ₂ near 0) yields fast mixing; a tiny gap (λ₂ near 1) yields exponentially slow mixing, as seen in nearly-periodic chains or chains with deep "bottlenecks" that separate parts of the state space.`
+  },
+];
+
+function renderTheorems() {
+  document.getElementById('theoremList').innerHTML = theorems.map((t,i)=>`
+    <div class="theorem" onclick="toggleTheorem(${i})">
+      <div class="theorem-header">
+        <span class="theorem-name">${t.name}</span>
+        <div class="header-right">
+          <span class="theorem-tag ${t.tag}">${t.tagText}</span>
+          <i class="ti ti-chevron-down chevron" id="chev${i}" aria-hidden="true"></i>
+        </div>
+      </div>
+      <div class="theorem-body" id="tbody${i}">
+        <div class="stmt">${t.stmt}</div>
+        <p class="proof-text">${t.proof}</p>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleTheorem(i) {
+  const body = document.getElementById('tbody'+i);
+  const chev = document.getElementById('chev'+i);
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open',!isOpen);
+  chev.classList.toggle('open',!isOpen);
+}
+
+// ─── INIT ───
+window.addEventListener('DOMContentLoaded', ()=>{
+  setTimeout(resizeCanvas, 50);
+  renderMatrix(); renderDist(); renderTheorems();
+});
+window.addEventListener('resize', resizeCanvas);
+</script>
+</body>
+</html>

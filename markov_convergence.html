@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Markov Chain — Convergence Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;1,9..144,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0f1a;
+    --panel: #121929;
+    --panel2: #19243a;
+    --border: #1e3355;
+    --border2: #273f6a;
+    --teal: #00c9a7;
+    --gold: #ffd166;
+    --violet: #a78bfa;
+    --red: #ff6b6b;
+    --blue: #60a5fa;
+    --text: #dde8f5;
+    --muted: #4a6fa5;
+    --dim: #6b8cba;
+    --sunny: #f2a623;
+    --rainy: #4ecdc4;
+    --cloudy: #a78bfa;
+    --stormy: #ff6b6b;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+  }
+
+  /* ── Header ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 18px 32px;
+    background: var(--panel);
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  header .eyebrow {
+    font-size: 10px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  header h1 {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 300;
+    color: var(--teal);
+    letter-spacing: -.01em;
+  }
+  header .subtitle {
+    font-size: 11px;
+    color: var(--dim);
+    margin-left: auto;
+  }
+  header .subtitle em { font-family: 'Fraunces', serif; font-style: italic; color: var(--violet); }
+
+  /* ── Main layout ── */
+  main {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 0;
+    overflow: auto;
+  }
+
+  /* ── Left panel ── */
+  aside {
+    border-right: 1px solid var(--border);
+    background: var(--panel);
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    overflow-y: auto;
+  }
+
+  .section-label {
+    font-size: 9px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  /* Matrix */
+  .matrix-wrap { overflow-x: auto; }
+  .matrix-table {
+    border-collapse: separate;
+    border-spacing: 3px;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+  }
+  .matrix-table th {
+    font-size: 10px;
+    color: var(--dim);
+    font-weight: 400;
+    text-align: center;
+    padding: 2px 6px;
+  }
+  .matrix-table .row-header {
+    font-size: 10px;
+    color: var(--dim);
+    text-align: right;
+    padding-right: 6px;
+    white-space: nowrap;
+  }
+  .matrix-table td.cell {
+    width: 46px;
+    height: 30px;
+    text-align: center;
+    border-radius: 4px;
+    transition: background .5s;
+    font-size: 12px;
+    vertical-align: middle;
+  }
+
+  /* Bars */
+  .bar-list { display: flex; flex-direction: column; gap: 8px; }
+  .bar-item { display: flex; align-items: center; gap: 8px; }
+  .bar-name { font-size: 11px; width: 50px; text-align: right; color: var(--dim); }
+  .bar-track {
+    flex: 1;
+    height: 24px;
+    background: rgba(255,255,255,.04);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width .4s ease; }
+  .bar-ss-tick {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 2px;
+    background: rgba(255,255,255,.35);
+    transition: left .4s ease;
+  }
+  .bar-pct {
+    position: absolute;
+    right: 6px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    color: rgba(255,255,255,.55);
+  }
+
+  /* Init buttons */
+  .init-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .init-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 5px 12px;
+    border-radius: 5px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--dim);
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .init-btn:hover { border-color: var(--teal); color: var(--teal); }
+  .init-btn.sel { background: rgba(0,201,167,.12); border-color: var(--teal); color: var(--teal); }
+
+  /* Steady state readout */
+  .ss-readout { display: flex; flex-direction: column; gap: 6px; }
+  .ss-row { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+  .ss-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .ss-name { color: var(--dim); width: 50px; }
+  .ss-val { font-family: 'DM Mono', monospace; color: var(--text); }
+
+  /* Error display */
+  .error-box {
+    background: rgba(0,0,0,.3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .error-label { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .error-val {
+    font-family: 'Fraunces', serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--teal);
+    letter-spacing: -.02em;
+  }
+  .step-val {
+    font-family: 'Fraunces', serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: -.02em;
+  }
+
+  /* ── Right panel ── */
+  .right-panel {
+    display: flex;
+    flex-direction: column;
+    padding: 24px 28px;
+    gap: 20px;
+    background: var(--bg);
+    overflow-y: auto;
+  }
+
+  /* Chart container */
+  .chart-container {
+    position: relative;
+    width: 100%;
+    height: 320px;
+  }
+
+  /* Formula strip */
+  .formula-strip {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .formula-main {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 18px;
+    color: var(--violet);
+  }
+  .formula-desc { font-size: 11px; color: var(--dim); line-height: 1.6; }
+
+  /* Legend */
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--dim); }
+  .legend-sq { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .legend-item strong { color: var(--text); font-weight: 400; }
+
+  /* ── Footer / Controls ── */
+  footer {
+    border-top: 1px solid var(--border);
+    background: var(--panel);
+    padding: 14px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  button {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 8px 18px;
+    border-radius: 6px;
+    border: 1px solid var(--border2);
+    background: rgba(255,255,255,.03);
+    color: var(--text);
+    cursor: pointer;
+    transition: all .2s;
+    letter-spacing: .04em;
+  }
+  button:hover { border-color: var(--teal); color: var(--teal); background: rgba(0,201,167,.07); }
+  button.primary { border-color: var(--teal); color: var(--teal); }
+  button.active { background: var(--teal); color: var(--bg); border-color: var(--teal); }
+
+  .speed-wrap {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--dim);
+  }
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100px;
+    height: 3px;
+    background: var(--border2);
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 13px; height: 13px;
+    border-radius: 50%;
+    background: var(--teal);
+    cursor: pointer;
+  }
+
+  /* Converged badge */
+  .badge-converged {
+    display: none;
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: rgba(0,201,167,.12);
+    border: 1px solid var(--teal);
+    color: var(--teal);
+    letter-spacing: .06em;
+  }
+  .badge-converged.show { display: inline-flex; align-items: center; gap: 6px; }
+
+  @media (max-width: 800px) {
+    main { grid-template-columns: 1fr; }
+    aside { border-right: none; border-bottom: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="eyebrow">Markov Chains · Slide 03</div>
+    <h1>Convergence Simulator</h1>
+  </div>
+  <div class="subtitle">
+    <em>π</em><sub style="font-size:9px">t+1</sub> = P<sup>T</sup> · <em>π</em><sub style="font-size:9px">t</sub> &nbsp;|&nbsp; Column-vector convention
+  </div>
+</header>
+
+<main>
+  <!-- ── Left sidebar ── -->
+  <aside>
+
+    <div>
+      <div class="section-label">Transition matrix P<sup>T</sup></div>
+      <div class="matrix-wrap">
+        <table class="matrix-table" id="matTable">
+          <thead>
+            <tr>
+              <th></th>
+              <th style="color:var(--sunny)">Su</th>
+              <th style="color:var(--rainy)">Ra</th>
+              <th style="color:var(--cloudy)">Cl</th>
+              <th style="color:var(--stormy)">St</th>
+            </tr>
+          </thead>
+          <tbody id="matBody"></tbody>
+        </table>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:8px;line-height:1.6">
+        Each <em>column</em> sums to 1. Cell shade encodes weight.
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Initial distribution π<sub>0</sub></div>
+      <div class="init-row" id="initRow"></div>
+    </div>
+
+    <div>
+      <div class="section-label">Current π<sub>t</sub> vs π* (tick)</div>
+      <div class="bar-list" id="bars"></div>
+    </div>
+
+    <div>
+      <div class="section-label">Steady state π*</div>
+      <div class="ss-readout" id="ssReadout"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="error-box">
+        <div class="error-label">t</div>
+        <div class="step-val" id="stepVal">0</div>
+      </div>
+      <div class="error-box">
+        <div class="error-label">‖π<sub>t</sub> − π*‖</div>
+        <div class="error-val" id="errVal">—</div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ── Right content ── -->
+  <div class="right-panel">
+
+    <div class="formula-strip">
+      <div class="formula-main">π<sub style="font-size:13px">t+1</sub> = P<sup>T</sup> · π<sub style="font-size:13px">t</sub></div>
+      <div class="formula-desc">
+        Left-multiplication by the column-stochastic P<sup>T</sup> advances the state vector one step.<br>
+        Dashed lines show the stationary distribution π* each state converges to.
+      </div>
+    </div>
+
+    <div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="chart-container">
+      <canvas id="chart" role="img" aria-label="Line chart showing each weather state probability converging toward its steady-state value over iterations">State probabilities converge to steady state over time.</canvas>
+    </div>
+
+  </div>
+</main>
+
+<!-- ── Controls ── -->
+<footer>
+  <button id="btnStep">Step →</button>
+  <button id="btnAuto" class="primary">▶ Run</button>
+  <button id="btnReset">↺ Reset</button>
+  <div class="badge-converged" id="badge">✓ Converged</div>
+  <div class="speed-wrap">
+    Speed
+    <input type="range" id="speedSlider" min="40" max="600" value="120" step="10">
+    <span id="speedLabel">120ms</span>
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+/* ── Data ── */
+const STATES = ['Sunny','Rainy','Cloudy','Stormy'];
+const COLORS = ['#f2a623','#4ecdc4','#a78bfa','#ff6b6b'];
+const SHORT  = ['Su','Ra','Cl','St'];
+
+// Original row-stochastic P[i][j] = prob from i→j
+const P_row = [
+  [0.60, 0.15, 0.15, 0.10],
+  [0.20, 0.40, 0.25, 0.15],
+  [0.15, 0.20, 0.50, 0.15],
+  [0.20, 0.25, 0.20, 0.35],
+];
+
+// PT = transpose → column-stochastic; PT[r][c] = P_row[c][r]
+const PT = P_row[0].map((_,r) => P_row.map(row => row[r]));
+
+// Steady state via power iteration on PT
+let piSS = [0.25,0.25,0.25,0.25];
+for(let k=0;k<4000;k++){
+  const nv=[0,0,0,0];
+  for(let r=0;r<4;r++) for(let c=0;c<4;c++) nv[r]+=PT[r][c]*piSS[c];
+  piSS=nv;
+}
+
+const INITS = [
+  {label:'Uniform', v:[0.25,0.25,0.25,0.25]},
+  {label:'Sunny',   v:[1,0,0,0]},
+  {label:'Rainy',   v:[0,1,0,0]},
+  {label:'Cloudy',  v:[0,0,1,0]},
+  {label:'Stormy',  v:[0,0,0,1]},
+];
+
+let initIdx = 0;
+let pi = [...INITS[0].v];
+let t = 0;
+let history = [[...pi]];
+let autoTimer = null;
+let speed = 120;
+const MAX_HIST = 80;
+
+/* ── Matrix table ── */
+const matBody = document.getElementById('matBody');
+STATES.forEach((s,r)=>{
+  const tr = document.createElement('tr');
+  const th = document.createElement('th');
+  th.className = 'row-header';
+  th.style.color = COLORS[r];
+  th.textContent = SHORT[r];
+  tr.appendChild(th);
+  for(let c=0;c<4;c++){
+    const td = document.createElement('td');
+    td.className = 'cell';
+    td.id = `mc_${r}_${c}`;
+    td.textContent = PT[r][c].toFixed(2);
+    tr.appendChild(td);
+  }
+  matBody.appendChild(tr);
+});
+
+function cellBg(v){
+  const a = (0.06 + v * 0.6).toFixed(2);
+  return `rgba(167,139,250,${a})`;
+}
+function refreshMatrix(){
+  for(let r=0;r<4;r++) for(let c=0;c<4;c++){
+    document.getElementById(`mc_${r}_${c}`).style.background = cellBg(PT[r][c]);
+  }
+}
+refreshMatrix();
+
+/* ── Steady state readout ── */
+const ssEl = document.getElementById('ssReadout');
+STATES.forEach((s,i)=>{
+  const row = document.createElement('div');
+  row.className = 'ss-row';
+  row.innerHTML = `<span class="ss-dot" style="background:${COLORS[i]}"></span>
+    <span class="ss-name">${s}</span>
+    <span class="ss-val">${(piSS[i]*100).toFixed(2)}%</span>`;
+  ssEl.appendChild(row);
+});
+
+/* ── Init buttons ── */
+const initRow = document.getElementById('initRow');
+INITS.forEach((ini,idx)=>{
+  const b = document.createElement('button');
+  b.className = 'init-btn' + (idx===0?' sel':'');
+  b.textContent = ini.label;
+  b.onclick = ()=>{
+    initIdx = idx;
+    document.querySelectorAll('.init-btn').forEach((el,i)=>el.classList.toggle('sel',i===idx));
+    reset();
+  };
+  initRow.appendChild(b);
+});
+
+/* ── Bars ── */
+const barsEl = document.getElementById('bars');
+function buildBars(){
+  barsEl.innerHTML='';
+  STATES.forEach((s,i)=>{
+    const item = document.createElement('div');
+    item.className='bar-item';
+    item.innerHTML=`<div class="bar-name">${s}</div>
+      <div class="bar-track">
+        <div class="bar-fill" id="bf_${i}" style="width:${(pi[i]*100).toFixed(1)}%;background:${COLORS[i]}55;border:1px solid ${COLORS[i]}88"></div>
+        <div class="bar-ss-tick" id="bst_${i}" style="left:${(piSS[i]*100).toFixed(1)}%"></div>
+        <div class="bar-pct" id="bpct_${i}">${(pi[i]*100).toFixed(1)}%</div>
+      </div>`;
+    barsEl.appendChild(item);
+  });
+}
+buildBars();
+
+function refreshBars(){
+  STATES.forEach((_,i)=>{
+    document.getElementById(`bf_${i}`).style.width   = (pi[i]*100).toFixed(1)+'%';
+    document.getElementById(`bpct_${i}`).textContent = (pi[i]*100).toFixed(1)+'%';
+    document.getElementById(`bst_${i}`).style.left   = (piSS[i]*100).toFixed(1)+'%';
+  });
+}
+
+/* ── Legend ── */
+const legEl = document.getElementById('legend');
+STATES.forEach((s,i)=>{
+  const item = document.createElement('div');
+  item.className = 'legend-item';
+  item.innerHTML = `<span class="legend-sq" style="background:${COLORS[i]}"></span>
+    ${s} <strong style="margin-left:4px;color:${COLORS[i]}">${(piSS[i]*100).toFixed(1)}% π*</strong>`;
+  legEl.appendChild(item);
+});
+
+/* ── Chart ── */
+const datasets = STATES.map((s,i)=>({
+  label: s,
+  data: [pi[i]],
+  borderColor: COLORS[i],
+  borderWidth: 2,
+  pointRadius: 0,
+  tension: .45,
+  fill: false,
+}));
+// Dashed steady-state lines
+STATES.forEach((s,i)=>{
+  datasets.push({
+    label: s+'*',
+    data: Array(MAX_HIST).fill(piSS[i]),
+    borderColor: COLORS[i]+'55',
+    borderWidth: 1,
+    borderDash: [5,5],
+    pointRadius: 0,
+    fill: false,
+  });
+});
+
+const ctx = document.getElementById('chart').getContext('2d');
+const chart = new Chart(ctx, {
+  type: 'line',
+  data: { labels: [0], datasets },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 0 },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+        backgroundColor: '#121929ee',
+        borderColor: '#1e3355',
+        borderWidth: 1,
+        titleColor: '#6b8cba',
+        bodyColor: '#dde8f5',
+        callbacks: {
+          label: ctx => {
+            if(ctx.datasetIndex >= 4) return null;
+            return `${ctx.dataset.label}: ${(ctx.parsed.y*100).toFixed(2)}%`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        title: { display: true, text: 't  (iterations)', color: '#4a6fa5', font: { family: 'DM Mono', size: 11 } },
+        ticks: { color: '#4a6fa5', font: { family: 'DM Mono', size: 10 }, maxTicksLimit: 12 },
+        grid: { color: 'rgba(30,51,85,.5)' },
+      },
+      y: {
+        min: 0, max: 1,
+        title: { display: true, text: 'probability', color: '#4a6fa5', font: { family: 'DM Mono', size: 11 } },
+        ticks: {
+          color: '#4a6fa5',
+          font: { family: 'DM Mono', size: 10 },
+          callback: v => (v*100).toFixed(0)+'%',
+        },
+        grid: { color: 'rgba(30,51,85,.5)' },
+      }
+    }
+  }
+});
+
+/* ── Core logic ── */
+function norm(v){ return Math.sqrt(v.reduce((s,x,i)=>{const d=x-piSS[i];return s+d*d;},0)); }
+
+function advancePi(){
+  const npi=[0,0,0,0];
+  for(let r=0;r<4;r++) for(let c=0;c<4;c++) npi[r]+=PT[r][c]*pi[c];
+  pi=npi; t++;
+  history.push([...pi]);
+  if(history.length>MAX_HIST) history.shift();
+}
+
+function updateChart(){
+  const n = history.length;
+  chart.data.labels = Array.from({length:n},(_,i)=>t-n+1+i);
+  STATES.forEach((_,i)=>{ chart.data.datasets[i].data = history.map(h=>h[i]); });
+  chart.update('none');
+}
+
+function step(){
+  advancePi();
+  refreshBars();
+  updateChart();
+  document.getElementById('stepVal').textContent = t;
+  const e = norm(pi);
+  document.getElementById('errVal').textContent = e < 1e-8 ? '< 1e-8' : e.toFixed(6);
+  if(e < 1e-6){
+    document.getElementById('badge').classList.add('show');
+    if(autoTimer){ clearInterval(autoTimer); autoTimer=null; document.getElementById('btnAuto').textContent='▶ Run'; document.getElementById('btnAuto').classList.remove('active'); }
+  }
+}
+
+function reset(){
+  if(autoTimer){ clearInterval(autoTimer); autoTimer=null; }
+  document.getElementById('btnAuto').textContent='▶ Run';
+  document.getElementById('btnAuto').classList.remove('active');
+  document.getElementById('badge').classList.remove('show');
+  pi=[...INITS[initIdx].v]; t=0; history=[[...pi]];
+  refreshBars();
+  updateChart();
+  document.getElementById('stepVal').textContent='0';
+  document.getElementById('errVal').textContent='—';
+}
+
+document.getElementById('btnStep').onclick = step;
+document.getElementById('btnReset').onclick = reset;
+
+document.getElementById('btnAuto').onclick = ()=>{
+  const btn = document.getElementById('btnAuto');
+  if(autoTimer){
+    clearInterval(autoTimer); autoTimer=null;
+    btn.textContent='▶ Run'; btn.classList.remove('active');
+  } else {
+    btn.textContent='⏸ Pause'; btn.classList.add('active');
+    autoTimer = setInterval(step, speed);
+  }
+};
+
+document.getElementById('speedSlider').oninput = function(){
+  speed = parseInt(this.value);
+  document.getElementById('speedLabel').textContent = speed+'ms';
+  if(autoTimer){ clearInterval(autoTimer); autoTimer=setInterval(step,speed); }
+};
+
+updateChart();
+refreshBars();
+</script>
+</body>
+</html>

@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Markov Property — Interactive Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Fraunces:ital,wght@0,300;0,700;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0f1e;
+    --panel: #111827;
+    --border: #1e3a5f;
+    --teal: #00c9a7;
+    --gold: #ffd166;
+    --violet: #a78bfa;
+    --red: #ff6b6b;
+    --muted: #4a6fa5;
+    --text: #e2eaf4;
+    --dim: #6b8cba;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    grid-template-rows: 60px 1fr 120px;
+    gap: 0;
+    overflow: hidden;
+  }
+  header {
+    grid-column: 1/-1;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    border-bottom: 1px solid var(--border);
+    gap: 16px;
+    background: var(--panel);
+  }
+  header h1 { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 300; color: var(--teal); }
+  header .tag { font-size: 10px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
+  header .badge {
+    margin-left: auto;
+    background: rgba(0,201,167,0.1);
+    border: 1px solid var(--teal);
+    color: var(--teal);
+    padding: 4px 12px;
+    font-size: 11px;
+    border-radius: 20px;
+  }
+  #canvas-wrap {
+    position: relative;
+    background: var(--bg);
+    overflow: hidden;
+  }
+  canvas { display: block; }
+  aside {
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  aside h2 { font-family: 'Fraunces', serif; font-size: 14px; font-weight: 300; color: var(--gold); }
+  .stat-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .node-stat {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    transition: all 0.3s;
+  }
+  .node-stat.active { border-color: var(--teal); background: rgba(0,201,167,0.05); }
+  .node-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .node-label { font-size: 12px; flex: 1; }
+  .node-count { font-size: 11px; color: var(--dim); }
+  .node-bar-wrap { flex: 1; height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; }
+  .node-bar { height: 100%; border-radius: 2px; transition: width 0.4s; }
+  .divider { height: 1px; background: var(--border); }
+  .info-box {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 11px;
+    color: var(--dim);
+    line-height: 1.7;
+  }
+  .info-box b { color: var(--teal); }
+  .controls-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  button {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 7px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.04);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  button:hover { border-color: var(--teal); color: var(--teal); background: rgba(0,201,167,0.08); }
+  button.primary { border-color: var(--teal); color: var(--teal); }
+  button.active { background: var(--teal); color: var(--bg); border-color: var(--teal); }
+  .step-counter {
+    font-family: 'Fraunces', serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--teal);
+    text-align: center;
+  }
+  .step-label { font-size: 10px; color: var(--muted); text-align: center; letter-spacing: 2px; text-transform: uppercase; }
+  footer {
+    grid-column: 1/-1;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 20px;
+    background: var(--panel);
+  }
+  .formula {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    font-style: italic;
+    color: var(--violet);
+  }
+  .footer-desc { font-size: 11px; color: var(--muted); }
+  .speed-wrap { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 11px; color: var(--dim); }
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100px;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--teal);
+    cursor: pointer;
+  }
+  .tooltip {
+    position: absolute;
+    background: var(--panel);
+    border: 1px solid var(--teal);
+    color: var(--text);
+    padding: 8px 12px;
+    font-size: 11px;
+    border-radius: 6px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 10;
+  }
+  .markov-note {
+    font-size: 10px;
+    color: var(--gold);
+    background: rgba(255,209,102,0.06);
+    border: 1px solid rgba(255,209,102,0.2);
+    border-radius: 6px;
+    padding: 8px 10px;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="tag">Slide 01 · The Markov Property</div>
+    <h1>Random Walk Simulator</h1>
+  </div>
+  <div class="badge">Click any node to start · Auto-walk available</div>
+</header>
+
+<div id="canvas-wrap">
+  <canvas id="c"></canvas>
+  <div class="tooltip" id="tooltip"></div>
+</div>
+
+<aside>
+  <div class="step-counter" id="stepCount">0</div>
+  <div class="step-label">steps taken</div>
+
+  <div class="divider"></div>
+  <h2>Node Visit Counts</h2>
+  <div class="stat-row" id="statRows"></div>
+
+  <div class="divider"></div>
+  <h2>Controls</h2>
+  <div class="controls-row">
+    <button id="btnAuto" class="primary">▶ Auto Walk</button>
+    <button id="btnStep">Step →</button>
+    <button id="btnReset">↺ Reset</button>
+  </div>
+
+  <div class="divider"></div>
+  <div class="markov-note">
+    <b>Memorylessness:</b> The next state depends only on where you <i>are now</i> — not the path that got you here. The history is irrelevant.
+  </div>
+  <div class="info-box">
+    As steps → ∞, visit frequencies converge to <b>π*</b> — the stationary distribution. This is Markov's power: long-run behavior is predictable.
+  </div>
+</aside>
+
+<footer>
+  <div class="formula">P( X<sub style="font-size:12px">t+1</sub> = j | X<sub style="font-size:12px">t</sub> = i ) = p<sub style="font-size:12px">ij</sub></div>
+  <div class="footer-desc">The transition probability depends only on the current state <i>i</i></div>
+  <div class="speed-wrap">
+    Speed <input type="range" id="speedSlider" min="50" max="800" value="300">
+    <span id="speedLabel">300ms</span>
+  </div>
+</footer>
+
+<script>
+const NODES = [
+  { id: 0, label: 'Sunny',   color: '#ffd166', x: 0.25, y: 0.35 },
+  { id: 1, label: 'Rainy',   color: '#4ecdc4', x: 0.5,  y: 0.72 },
+  { id: 2, label: 'Cloudy',  color: '#a78bfa', x: 0.75, y: 0.35 },
+  { id: 3, label: 'Stormy',  color: '#ff6b6b', x: 0.5,  y: 0.22 },
+];
+
+// Row-stochastic: P[i][j] = prob of going from i to j
+const P = [
+  [0.60, 0.15, 0.15, 0.10],
+  [0.20, 0.40, 0.25, 0.15],
+  [0.15, 0.20, 0.50, 0.15],
+  [0.20, 0.25, 0.20, 0.35],
+];
+
+// Steady state (computed via power iteration)
+const STEADY = (() => {
+  let v = [0.25, 0.25, 0.25, 0.25];
+  for (let iter = 0; iter < 2000; iter++) {
+    const nv = [0,0,0,0];
+    for (let j = 0; j < 4; j++)
+      for (let i = 0; i < 4; i++)
+        nv[j] += P[i][j] * v[i];
+    v = nv;
+  }
+  return v;
+})();
+
+let visits = [0, 0, 0, 0];
+let current = 0;
+let steps = 0;
+let autoInterval = null;
+let isAuto = false;
+let speed = 300;
+let particles = [];
+let glowNodes = new Set();
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const wrap = document.getElementById('canvas-wrap');
+
+function resize() {
+  canvas.width = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+function nodePos(i) {
+  return {
+    x: NODES[i].x * canvas.width,
+    y: NODES[i].y * canvas.height
+  };
+}
+
+function nodeRadius() { return Math.min(canvas.width, canvas.height) * 0.085; }
+
+function drawArrow(fromI, toI, weight) {
+  const r = nodeRadius();
+  const from = nodePos(fromI);
+  const to = nodePos(toI);
+  const dx = to.x - from.x, dy = to.y - from.y;
+  const dist = Math.sqrt(dx*dx + dy*dy);
+  const ux = dx/dist, uy = dy/dist;
+
+  // Offset to avoid overlap: curve
+  const cx = (from.x + to.x) / 2 - uy * 45;
+  const cy = (from.y + to.y) / 2 + ux * 45;
+
+  const startX = from.x + ux * r;
+  const startY = from.y + uy * r;
+
+  // find end on circle of toI
+  const dx2 = cx - to.x, dy2 = cy - to.y;
+  const d2 = Math.sqrt(dx2*dx2 + dy2*dy2);
+  const endX = to.x + (dx2/d2) * r;
+  const endY = to.y + (dy2/d2) * r;
+
+  const alpha = 0.15 + weight * 0.7;
+  const lw = 0.5 + weight * 2.5;
+  ctx.save();
+  ctx.strokeStyle = `rgba(74,111,165,${alpha})`;
+  ctx.lineWidth = lw;
+  ctx.beginPath();
+  ctx.moveTo(startX, startY);
+  ctx.quadraticCurveTo(cx, cy, endX, endY);
+  ctx.stroke();
+
+  // Arrowhead
+  const tx = endX - cx, ty = endY - cy;
+  const tlen = Math.sqrt(tx*tx + ty*ty);
+  const nx = tx/tlen, ny = ty/tlen;
+  const ax = endX - nx*10 - ny*5;
+  const ay = endY - ny*10 + nx*5;
+  const bx = endX - nx*10 + ny*5;
+  const by = endY - ny*10 - nx*5;
+  ctx.fillStyle = `rgba(74,111,165,${alpha})`;
+  ctx.beginPath();
+  ctx.moveTo(endX, endY);
+  ctx.lineTo(ax, ay);
+  ctx.lineTo(bx, by);
+  ctx.closePath();
+  ctx.fill();
+
+  // Weight label
+  const lx = cx, ly = cy;
+  ctx.fillStyle = `rgba(74,111,165,${alpha + 0.2})`;
+  ctx.font = `10px DM Mono`;
+  ctx.textAlign = 'center';
+  ctx.fillText(weight.toFixed(2), lx, ly - 4);
+  ctx.restore();
+}
+
+function drawSelfLoop(i) {
+  const r = nodeRadius();
+  const pos = nodePos(i);
+  const w = P[i][i];
+  if (w < 0.01) return;
+  const alpha = 0.15 + w * 0.7;
+  ctx.save();
+  ctx.strokeStyle = `rgba(74,111,165,${alpha})`;
+  ctx.lineWidth = 0.5 + w * 2;
+  // Draw loop above the node
+  const lx = pos.x, ly = pos.y - r - 10;
+  ctx.beginPath();
+  ctx.arc(lx, ly, 18, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = `rgba(74,111,165,${alpha + 0.2})`;
+  ctx.font = '10px DM Mono';
+  ctx.textAlign = 'center';
+  ctx.fillText(w.toFixed(2), lx, ly - 22);
+  ctx.restore();
+}
+
+function drawNode(i, highlight) {
+  const r = nodeRadius();
+  const pos = nodePos(i);
+  const node = NODES[i];
+  const heat = visits[i] / (Math.max(...visits) || 1);
+  const glowing = glowNodes.has(i);
+
+  ctx.save();
+
+  // Glow
+  if (highlight || glowing) {
+    const grad = ctx.createRadialGradient(pos.x, pos.y, r*0.5, pos.x, pos.y, r*2.2);
+    grad.addColorStop(0, node.color + '44');
+    grad.addColorStop(1, 'transparent');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, r*2.2, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // Heat ring
+  if (heat > 0) {
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, r + 4, 0, Math.PI*2);
+    ctx.strokeStyle = node.color + Math.floor(heat * 180).toString(16).padStart(2,'0');
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+
+  // Main circle
+  const bgGrad = ctx.createRadialGradient(pos.x - r*0.3, pos.y - r*0.3, 0, pos.x, pos.y, r);
+  bgGrad.addColorStop(0, node.color + '33');
+  bgGrad.addColorStop(1, '#111827');
+  ctx.beginPath();
+  ctx.arc(pos.x, pos.y, r, 0, Math.PI*2);
+  ctx.fillStyle = bgGrad;
+  ctx.fill();
+  ctx.strokeStyle = highlight ? node.color : node.color + '88';
+  ctx.lineWidth = highlight ? 3 : 1.5;
+  ctx.stroke();
+
+  // Label
+  ctx.fillStyle = highlight ? node.color : node.color + 'cc';
+  ctx.font = `${highlight ? 'bold' : 'normal'} ${Math.round(r*0.32)}px Fraunces`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(node.label, pos.x, pos.y - 6);
+
+  // Visit count
+  ctx.font = `${Math.round(r*0.22)}px DM Mono`;
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.fillText(`${visits[i]} visits`, pos.x, pos.y + 10);
+
+  // Steady state
+  const steadyPct = (STEADY[i] * 100).toFixed(1);
+  ctx.font = `${Math.round(r*0.19)}px DM Mono`;
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.fillText(`π*=${steadyPct}%`, pos.x, pos.y + 22);
+  ctx.restore();
+}
+
+let particlesList = [];
+
+function spawnParticle(fromI, toI) {
+  const from = nodePos(fromI);
+  const to = nodePos(toI);
+  particlesList.push({ fromI, toI, t: 0, x: from.x, y: from.y, color: NODES[fromI].color });
+}
+
+function frame() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw edges
+  for (let i = 0; i < 4; i++)
+    for (let j = 0; j < 4; j++)
+      if (i !== j && P[i][j] > 0.01) drawArrow(i, j, P[i][j]);
+  for (let i = 0; i < 4; i++) drawSelfLoop(i);
+
+  // Draw nodes
+  for (let i = 0; i < 4; i++) drawNode(i, i === current);
+
+  // Particles
+  particlesList = particlesList.filter(p => p.t < 1);
+  for (const p of particlesList) {
+    p.t += 0.04;
+    const from = nodePos(p.fromI);
+    const to = nodePos(p.toI);
+    const t = p.t;
+    // Bezier
+    const cx = (from.x + to.x)/2 - (to.y - from.y) * 0.3;
+    const cy = (from.y + to.y)/2 + (to.x - from.x) * 0.3;
+    p.x = (1-t)*(1-t)*from.x + 2*(1-t)*t*cx + t*t*to.x;
+    p.y = (1-t)*(1-t)*from.y + 2*(1-t)*t*cy + t*t*to.y;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 7, 0, Math.PI*2);
+    ctx.fillStyle = p.color;
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur = 12;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  requestAnimationFrame(frame);
+}
+frame();
+
+function sampleNext(i) {
+  const r = Math.random();
+  let cum = 0;
+  for (let j = 0; j < 4; j++) {
+    cum += P[i][j];
+    if (r < cum) return j;
+  }
+  return 3;
+}
+
+function step() {
+  const next = sampleNext(current);
+  spawnParticle(current, next);
+  setTimeout(() => {
+    glowNodes.add(next);
+    setTimeout(() => glowNodes.delete(next), 400);
+    current = next;
+    visits[next]++;
+    steps++;
+    updateUI();
+  }, speed * 0.6);
+}
+
+function updateUI() {
+  document.getElementById('stepCount').textContent = steps;
+  const total = visits.reduce((a,b) => a+b, 0) || 1;
+  const container = document.getElementById('statRows');
+  container.innerHTML = '';
+  NODES.forEach((node, i) => {
+    const pct = visits[i] / total;
+    const steadyPct = STEADY[i];
+    const div = document.createElement('div');
+    div.className = 'node-stat' + (i === current ? ' active' : '');
+    div.innerHTML = `
+      <div class="node-dot" style="background:${node.color}"></div>
+      <div class="node-label">${node.label}</div>
+      <div style="flex:1">
+        <div class="node-bar-wrap">
+          <div class="node-bar" style="width:${pct*100}%;background:${node.color}"></div>
+        </div>
+        <div style="font-size:9px;color:var(--dim);margin-top:3px">
+          ${(pct*100).toFixed(1)}% actual | ${(steadyPct*100).toFixed(1)}% π*
+        </div>
+      </div>
+      <div class="node-count">${visits[i]}</div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+document.getElementById('btnStep').addEventListener('click', step);
+
+document.getElementById('btnAuto').addEventListener('click', () => {
+  isAuto = !isAuto;
+  const btn = document.getElementById('btnAuto');
+  if (isAuto) {
+    btn.classList.add('active');
+    btn.textContent = '⏸ Pause';
+    autoInterval = setInterval(step, speed);
+  } else {
+    btn.classList.remove('active');
+    btn.textContent = '▶ Auto Walk';
+    clearInterval(autoInterval);
+  }
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  visits = [0, 0, 0, 0];
+  current = 0;
+  steps = 0;
+  particlesList = [];
+  isAuto = false;
+  clearInterval(autoInterval);
+  document.getElementById('btnAuto').classList.remove('active');
+  document.getElementById('btnAuto').textContent = '▶ Auto Walk';
+  updateUI();
+});
+
+const speedSlider = document.getElementById('speedSlider');
+speedSlider.addEventListener('input', () => {
+  speed = parseInt(speedSlider.value);
+  document.getElementById('speedLabel').textContent = speed + 'ms';
+  if (isAuto) {
+    clearInterval(autoInterval);
+    autoInterval = setInterval(step, speed);
+  }
+});
+
+canvas.addEventListener('click', e => {
+  const r = nodeRadius();
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  for (let i = 0; i < 4; i++) {
+    const pos = nodePos(i);
+    const d = Math.sqrt((mx-pos.x)**2 + (my-pos.y)**2);
+    if (d < r) { current = i; updateUI(); break; }
+  }
+});
+
+updateUI();
+</script>
+</body>
+</html>
